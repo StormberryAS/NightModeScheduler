@@ -1,0 +1,21 @@
+Night‑Mode Scheduler – Personal Light‑Exposure Tracker
+
+Core Functionality:
+- Log screen‑time and suggest optimal bedtime based on evening light exposure.
+- Visual “blue‑light” meter using gradient overlays.
+- Simple privacy‑first storage using browser local storage.
+
+Why it fits:
+- Leverages the dark‑mode UI philosophy.
+- Promotes healthy habits related to the circadian rhythm (linked to sun/moon cycles).
+- Fully offline and private.
+
+Potential UI Elements:
+- Glass‑morphism slider for screen time.
+- Color‑shifting background reflecting light temperature.
+- Recommendation card with smooth entry animation.
+
+Design & Development Rules:
+- All pages must have footers as similar to SunApp as possible.
+- The favicon in SVG must be in the mainhead.
+- Once ready, I want to see it in localhost before we git push it.
