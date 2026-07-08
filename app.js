@@ -7,8 +7,14 @@ const sliderVal = document.getElementById('exposure-val');
 const btnLog = document.getElementById('save-log-btn');
 const root = document.documentElement;
 
+// Data Management Elements
+const btnExport = document.getElementById('export-btn');
+const btnImport = document.getElementById('import-btn');
+const fileInput = document.getElementById('import-file');
+
 // Base optimal bedtime is 10:00 PM
 const BASE_BEDTIME_MINUTES = 22 * 60; // 1320 minutes since midnight
+let currentRecommendedBedtime = "";
 
 function formatTime(totalMinutes) {
   const h = Math.floor(totalMinutes / 60);
@@ -20,21 +26,16 @@ function formatTime(totalMinutes) {
 }
 
 function updateAesthetic(hours) {
-  // Map 0 hours to hue 220 (cool blue)
-  // Map 6 hours to hue 20 (amber/orange)
-  // Map 6+ hours to lower lightness (darker red)
   const maxHours = 6;
   const percentage = Math.min(hours / maxHours, 1);
-  
-  // Hue ranges from 220 down to 20
   const targetHue = 220 - (percentage * 200);
   root.style.setProperty('--bg-hue', targetHue);
   
-  // Calculate recommended bedtime delay (+20 minutes per hour of evening screen time)
   const delayMinutes = hours * 20;
   const recommendedMinutes = BASE_BEDTIME_MINUTES + delayMinutes;
   
-  document.getElementById('bedtime-val').textContent = formatTime(recommendedMinutes);
+  currentRecommendedBedtime = formatTime(recommendedMinutes);
+  document.getElementById('bedtime-val').textContent = currentRecommendedBedtime;
   
   const descEl = document.getElementById('bedtime-desc');
   if (hours === 0) {
@@ -77,7 +78,7 @@ function loadLogs() {
     
     const valSpan = document.createElement('span');
     valSpan.className = 'log-data';
-    valSpan.textContent = `${log.hours.toFixed(1)} hrs`;
+    valSpan.textContent = `${log.hours.toFixed(1)} hrs (${log.recommendedBedtime || 'N/A'})`;
     
     li.appendChild(dateSpan);
     li.appendChild(valSpan);
@@ -92,7 +93,8 @@ btnLog.addEventListener('click', () => {
   // Add new log at beginning
   logs.unshift({
     timestamp: new Date().getTime(),
-    hours: val
+    hours: val,
+    recommendedBedtime: currentRecommendedBedtime
   });
   
   localStorage.setItem('nightmode_logs', JSON.stringify(logs));
@@ -106,6 +108,48 @@ btnLog.addEventListener('click', () => {
     btnLog.textContent = originalText;
     btnLog.style.background = "var(--accent-primary)";
   }, 2000);
+});
+
+// Data Management: Export
+btnExport.addEventListener('click', () => {
+  const data = localStorage.getItem('nightmode_logs') || '[]';
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nightmode_logs_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Data Management: Import
+btnImport.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      if (Array.isArray(importedData)) {
+        localStorage.setItem('nightmode_logs', JSON.stringify(importedData));
+        loadLogs();
+        alert('Logs imported successfully!');
+      } else {
+        alert('Invalid log format. Must be a JSON array.');
+      }
+    } catch (err) {
+      alert('Error reading file. Make sure it is a valid JSON file.');
+    }
+  };
+  reader.readAsText(file);
 });
 
 // Initialization
