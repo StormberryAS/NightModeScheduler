@@ -1,5 +1,7 @@
 /* NightModeScheduler Logic
-   Offline `localStorage` screen time tracker and dynamic blue-light calculator.
+   Offline screen-time tracker and dynamic blue-light calculator. Logs are
+   held in localStorage encrypted at rest with a device-bound, non-extractable
+   AES-GCM key (see the ENCRYPTION AT REST block below).
 */
 
 const slider = document.getElementById('exposure-slider');
@@ -15,6 +17,98 @@ const fileInput = document.getElementById('import-file');
 // Base optimal bedtime is 10:00 PM
 const BASE_BEDTIME_MINUTES = 22 * 60; // 1320 minutes since midnight
 let currentRecommendedBedtime = "";
+
+/* ================================================================
+   ENCRYPTION AT REST
+   Logs are stored in localStorage as ciphertext, encrypted with a
+   device-bound AES-GCM key that lives in IndexedDB as a NON-EXTRACTABLE
+   CryptoKey. The key material cannot be read back out by script, so a
+   glance at localStorage (or a browser storage export) shows only
+   ciphertext, never your history.
+
+   Threat model, stated honestly: this is at-rest protection against
+   casual inspection, a shared computer, or a storage dump. It is not a
+   defence against malicious script running on this same origin, which
+   could ask the key to decrypt. Convenience first: no passphrase is
+   needed for everyday use. Portable, cross-device backups still use the
+   password-based export further down this file.
+================================================================ */
+const STORE_KEY = 'nightmode_logs_v2';   // ciphertext blob (iv + AES-GCM)
+const LEGACY_KEY = 'nightmode_logs';     // pre-encryption plaintext (migrated once)
+const IDB_NAME = 'nightmode-secure';
+const IDB_STORE = 'keys';
+
+function openKeyDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbOp(mode, fn) {
+  return openKeyDb().then(db => new Promise((resolve, reject) => {
+    const store = db.transaction(IDB_STORE, mode).objectStore(IDB_STORE);
+    const req = fn(store);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+async function getDeviceKey() {
+  let key = await idbOp('readonly', s => s.get('logKey'));
+  if (!key) {
+    // extractable = false: the raw bytes can never be read back out by script.
+    key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    await idbOp('readwrite', s => s.put(key, 'logKey'));
+  }
+  return key;
+}
+
+function toB64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function fromB64(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function writeLogs(logs) {
+  const key = await getDeviceKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(logs))));
+  const combined = new Uint8Array(iv.length + ct.length);
+  combined.set(iv, 0);
+  combined.set(ct, iv.length);
+  localStorage.setItem(STORE_KEY, toB64(combined));
+}
+
+async function readLogs() {
+  // One-time migration of any pre-encryption plaintext.
+  const legacy = localStorage.getItem(LEGACY_KEY);
+  if (legacy !== null && localStorage.getItem(STORE_KEY) === null) {
+    // Only drop the plaintext once the encrypted copy is safely written, so a
+    // failed write (IndexedDB blocked, quota) never loses the logs.
+    try { await writeLogs(JSON.parse(legacy)); localStorage.removeItem(LEGACY_KEY); }
+    catch (e) { /* leave legacy in place if it fails */ }
+  }
+  const blob = localStorage.getItem(STORE_KEY);
+  if (!blob) return [];
+  try {
+    const raw = fromB64(blob);
+    const iv = raw.slice(0, 12);
+    const ct = raw.slice(12);
+    const key = await getDeviceKey();
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    const logs = JSON.parse(new TextDecoder().decode(pt));
+    return Array.isArray(logs) ? logs : [];
+  } catch (e) {
+    return [];
+  }
+}
 
 function formatTime(totalMinutes) {
   const h = Math.floor(totalMinutes / 60);
@@ -57,12 +151,12 @@ slider.addEventListener('input', (e) => {
 });
 
 // Load Logs
-function loadLogs() {
+async function loadLogs() {
   const listEl = document.getElementById('log-list');
   listEl.innerHTML = '';
-  
-  const logs = JSON.parse(localStorage.getItem('nightmode_logs') || '[]');
-  
+
+  const logs = await readLogs();
+
   if (logs.length === 0) {
     listEl.innerHTML = '<li class="log-item"><span class="log-date">No logs yet.</span></li>';
     return;
@@ -86,20 +180,20 @@ function loadLogs() {
   });
 }
 
-btnLog.addEventListener('click', () => {
+btnLog.addEventListener('click', async () => {
   const val = parseFloat(slider.value);
-  const logs = JSON.parse(localStorage.getItem('nightmode_logs') || '[]');
-  
+  const logs = await readLogs();
+
   // Add new log at beginning
   logs.unshift({
     timestamp: new Date().getTime(),
     hours: val,
     recommendedBedtime: currentRecommendedBedtime
   });
-  
-  localStorage.setItem('nightmode_logs', JSON.stringify(logs));
-  loadLogs();
-  
+
+  await writeLogs(logs);
+  await loadLogs();
+
   const originalText = btnLog.textContent;
   btnLog.textContent = "Logged Successfully!";
   btnLog.style.background = "#00ff64";
@@ -156,7 +250,7 @@ async function decryptData(payloadStr, password) {
 
 // Data Management: Export
 btnExport.addEventListener('click', async () => {
-  const data = localStorage.getItem('nightmode_logs') || '[]';
+  const data = JSON.stringify(await readLogs());
   const pwd = prompt("Enter a password to encrypt the backup, or leave empty for an unencrypted file:");
   if (pwd === null) return; // User cancelled
   
@@ -205,8 +299,8 @@ fileInput.addEventListener('change', (e) => {
       const importedData = JSON.parse(decryptedJsonStr);
       
       if (Array.isArray(importedData)) {
-        localStorage.setItem('nightmode_logs', JSON.stringify(importedData));
-        loadLogs();
+        await writeLogs(importedData);
+        await loadLogs();
         alert('Logs imported successfully!');
       } else {
         alert('Invalid log format. Must be a JSON array.');
@@ -220,7 +314,7 @@ fileInput.addEventListener('change', (e) => {
 });
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   updateAesthetic(parseFloat(slider.value));
-  loadLogs();
+  await loadLogs();
 });
