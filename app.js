@@ -110,19 +110,71 @@ btnLog.addEventListener('click', () => {
   }, 2000);
 });
 
-// Data Management: Export
-btnExport.addEventListener('click', () => {
-  const data = localStorage.getItem('nightmode_logs') || '[]';
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+// Encryption Helpers
+async function encryptData(text, password) {
+  if (!password) return JSON.stringify({ encrypted: false, data: btoa(unescape(encodeURIComponent(text))) });
   
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `nightmode_logs_${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
+  );
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  
+  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+  combined.set(salt, 0); 
+  combined.set(iv, salt.length); 
+  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+  
+  const base64 = btoa(Array.from(combined).map(b => String.fromCharCode(b)).join(''));
+  return JSON.stringify({ encrypted: true, data: base64 });
+}
+
+async function decryptData(payloadStr, password) {
+  const payload = JSON.parse(payloadStr);
+  if (!payload.encrypted) return decodeURIComponent(escape(atob(payload.data)));
+  if (!password) throw new Error("Password required");
+  
+  const combined = new Uint8Array(atob(payload.data).split('').map(c => c.charCodeAt(0)));
+  const salt = combined.slice(0, 16);
+  const iv = combined.slice(16, 28);
+  const data = combined.slice(28);
+  
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+  );
+  
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+  return new TextDecoder().decode(decrypted);
+}
+
+// Data Management: Export
+btnExport.addEventListener('click', async () => {
+  const data = localStorage.getItem('nightmode_logs') || '[]';
+  const pwd = prompt("Enter a password to encrypt the backup, or leave empty for an unencrypted file:");
+  if (pwd === null) return; // User cancelled
+  
+  try {
+    const finalPayload = await encryptData(data, pwd);
+    const blob = new Blob([finalPayload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nightmode_logs_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Encryption failed: " + e.message);
+  }
 });
 
 // Data Management: Import
@@ -135,9 +187,23 @@ fileInput.addEventListener('change', (e) => {
   if (!file) return;
   
   const reader = new FileReader();
-  reader.onload = (event) => {
+  reader.onload = async (event) => {
     try {
-      const importedData = JSON.parse(event.target.result);
+      const fileContent = event.target.result;
+      const parsedContent = JSON.parse(fileContent);
+      
+      let pwd = null;
+      if (parsedContent.encrypted) {
+        pwd = prompt("This backup is encrypted. Please enter the password to decrypt:");
+        if (pwd === null) {
+          fileInput.value = "";
+          return; // User cancelled
+        }
+      }
+      
+      const decryptedJsonStr = await decryptData(fileContent, pwd);
+      const importedData = JSON.parse(decryptedJsonStr);
+      
       if (Array.isArray(importedData)) {
         localStorage.setItem('nightmode_logs', JSON.stringify(importedData));
         loadLogs();
@@ -146,8 +212,9 @@ fileInput.addEventListener('change', (e) => {
         alert('Invalid log format. Must be a JSON array.');
       }
     } catch (err) {
-      alert('Error reading file. Make sure it is a valid JSON file.');
+      alert('Error reading file or incorrect password.');
     }
+    fileInput.value = ""; // Reset input to allow re-importing same file
   };
   reader.readAsText(file);
 });
