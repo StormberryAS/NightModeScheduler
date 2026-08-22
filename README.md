@@ -31,3 +31,13 @@ Open `http://localhost:3005` in your browser.
 
 ## Credits
 Built by [Stormberry AS](https://stormberry.as). Proudly powered by sovereign AI agents.
+
+## Disclaimer
+
+Supplied free of charge, **as is**, with no warranty of any kind. Using it creates no client or advisory relationship with Stormberry AS, and nothing it produces is professional advice.
+
+**Not medical advice.** This is a self-logging tool, not a clinical instrument. It does not diagnose, treat or monitor any condition, and nothing it displays should inform a decision about sleep, health or medication. Speak to a doctor about sleep problems.
+
+This is a **functioning prototype**, not a certified instrument and not a professional service. Values are computed or modelled, not measured. Check anything that matters against an authoritative source before you act on it. Stormberry AS reimburses no cost or loss arising from use of this application.
+
+Full terms: [DISCLAIMER.md](DISCLAIMER.md).
