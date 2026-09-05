@@ -130,6 +130,6 @@ input[type=range]::-webkit-slider-thumb {
 .footer-social a { color: var(--text-muted); transition: color var(--t-fast), transform var(--t-fast); }
 .footer-social a:hover { color: var(--text-primary); transform: translateY(-2px); }
 .footer-bottom p { color: var(--text-muted); font-size: 0.85rem; }
-.footer-bottom a { color: var(--text-secondary); text-decoration: none; transition: color var(--t-med); }
+.footer-bottom a { color: var(--accent-primary); text-decoration: none; transition: color var(--t-med); }
 .footer-bottom a:hover { color: var(--text-primary); text-decoration: underline; }
 .footer-privacy, .footer-ai { opacity: 0.7; }
