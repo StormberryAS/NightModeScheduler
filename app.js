@@ -1,5 +1,5 @@
 /* NightModeScheduler Logic
-   Offline screen-time tracker and dynamic blue-light calculator. Logs are
+   Offline evening screen-time log with a simple bedtime estimate. Logs are
    held in localStorage encrypted at rest with a device-bound, non-extractable
    AES-GCM key (see the ENCRYPTION AT REST block below).
 */
@@ -14,9 +14,47 @@ const btnExport = document.getElementById('export-btn');
 const btnImport = document.getElementById('import-btn');
 const fileInput = document.getElementById('import-file');
 
-// Base optimal bedtime is 10:00 PM
-const BASE_BEDTIME_MINUTES = 22 * 60; // 1320 minutes since midnight
-let currentRecommendedBedtime = "";
+/* THE BEDTIME ESTIMATE
+   One fixed rule, nothing more: start at 22:00 and add 20 minutes for every
+   hour of screen time logged after 18:00. It is an estimate, not a
+   measurement and not advice, and the page says so in plain words under the
+   figure (see describeRule). Keep that sentence in step with these numbers.
+   The app makes no claim about sleep, health or the body. */
+const BASE_BEDTIME_MINUTES = 22 * 60;    // 22:00
+const MINUTES_PER_SCREEN_HOUR = 20;
+const EVENING_START_MINUTES = 18 * 60;   // the slider counts screen time after 18:00
+const DAY_MINUTES = 24 * 60;
+
+// Minutes since midnight, wrapped into 0..1439 so that 24:00 reads as 00:00
+// and never as 12:00 PM (noon).
+function wrapMinutes(totalMinutes) {
+  const m = Math.round(totalMinutes);
+  return ((m % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+}
+
+function estimateBedtimeMinutes(hours) {
+  return wrapMinutes(BASE_BEDTIME_MINUTES + hours * MINUTES_PER_SCREEN_HOUR);
+}
+
+// Clock times in the visitor's own short time format: 00:00 and 22:40 in
+// Norway or the UK, 12:00 AM and 10:40 PM in the US. Built and formatted in
+// UTC so no time zone or daylight-saving change can shift a time of day.
+const clockFormat = new Intl.DateTimeFormat(undefined, { timeStyle: 'short', timeZone: 'UTC' });
+const hoursFormat = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+function formatTime(totalMinutes) {
+  const m = wrapMinutes(totalMinutes);
+  return clockFormat.format(new Date(Date.UTC(2000, 0, 1, Math.floor(m / 60), m % 60)));
+}
+
+function formatHours(hours) {
+  return `${hoursFormat.format(hours)} hrs`;
+}
+
+function describeRule() {
+  return `Estimate from a fixed rule, not a measurement: ${formatTime(BASE_BEDTIME_MINUTES)} plus ` +
+    `${MINUTES_PER_SCREEN_HOUR} minutes for each hour of screen time after ${formatTime(EVENING_START_MINUTES)}.`;
+}
 
 /* ================================================================
    ENCRYPTION AT REST
@@ -110,44 +148,19 @@ async function readLogs() {
   }
 }
 
-function formatTime(totalMinutes) {
-  const h = Math.floor(totalMinutes / 60);
-  const m = Math.floor(totalMinutes % 60);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const displayH = h % 12 === 0 ? 12 : h % 12;
-  const displayM = String(m).padStart(2, '0');
-  return `${displayH}:${displayM} ${ampm}`;
-}
-
 function updateAesthetic(hours) {
   const maxHours = 6;
   const percentage = Math.min(hours / maxHours, 1);
   const targetHue = 220 - (percentage * 200);
   root.style.setProperty('--bg-hue', targetHue);
-  
-  const delayMinutes = hours * 20;
-  const recommendedMinutes = BASE_BEDTIME_MINUTES + delayMinutes;
-  
-  currentRecommendedBedtime = formatTime(recommendedMinutes);
-  document.getElementById('bedtime-val').textContent = currentRecommendedBedtime;
-  
-  const descEl = document.getElementById('bedtime-desc');
-  if (hours === 0) {
-    descEl.textContent = "Perfect! Your circadian rhythm is fully aligned.";
-  } else if (hours <= 2) {
-    descEl.textContent = "Moderate exposure. Consider using a blue-light filter.";
-  } else if (hours <= 4) {
-    descEl.textContent = "High exposure. Your melatonin production is significantly delayed.";
-  } else {
-    descEl.textContent = "Critical exposure. Severe disruption to your sleep cycle expected.";
-  }
+
+  sliderVal.textContent = formatHours(hours);
+  document.getElementById('bedtime-val').textContent = formatTime(estimateBedtimeMinutes(hours));
 }
 
 // Event Listeners
 slider.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  sliderVal.textContent = `${val.toFixed(1)} hrs`;
-  updateAesthetic(val);
+  updateAesthetic(parseFloat(e.target.value));
 });
 
 // Load Logs
@@ -163,6 +176,11 @@ async function loadLogs() {
   }
   
   logs.slice(0, 10).forEach(log => {
+    if (!log || typeof log.hours !== 'number' || !isFinite(log.hours)) return;
+    // Entries saved before 2026-10 kept the time as text, and 6 hours was
+    // stored as "12:00 PM". The rule has never changed, so recompute it.
+    const bedtime = typeof log.bedtimeMinutes === 'number' ? log.bedtimeMinutes : estimateBedtimeMinutes(log.hours);
+
     const li = document.createElement('li');
     li.className = 'log-item';
     
@@ -172,7 +190,7 @@ async function loadLogs() {
     
     const valSpan = document.createElement('span');
     valSpan.className = 'log-data';
-    valSpan.textContent = `${log.hours.toFixed(1)} hrs (${log.recommendedBedtime || 'N/A'})`;
+    valSpan.textContent = `${formatHours(log.hours)} (${formatTime(bedtime)})`;
     
     li.appendChild(dateSpan);
     li.appendChild(valSpan);
@@ -184,18 +202,19 @@ btnLog.addEventListener('click', async () => {
   const val = parseFloat(slider.value);
   const logs = await readLogs();
 
-  // Add new log at beginning
+  // Add new log at beginning. The estimate is stored as minutes since
+  // midnight and formatted only when shown, in the visitor's own clock format.
   logs.unshift({
     timestamp: new Date().getTime(),
     hours: val,
-    recommendedBedtime: currentRecommendedBedtime
+    bedtimeMinutes: estimateBedtimeMinutes(val)
   });
 
   await writeLogs(logs);
   await loadLogs();
 
   const originalText = btnLog.textContent;
-  btnLog.textContent = "Logged Successfully!";
+  btnLog.textContent = "Logged";
   btnLog.style.background = "#00ff64";
   
   setTimeout(() => {
@@ -315,6 +334,8 @@ fileInput.addEventListener('change', (e) => {
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('evening-start').textContent = formatTime(EVENING_START_MINUTES);
+  document.getElementById('bedtime-desc').textContent = describeRule();
   updateAesthetic(parseFloat(slider.value));
   await loadLogs();
 });

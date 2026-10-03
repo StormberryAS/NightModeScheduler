@@ -1,13 +1,15 @@
 # NightModeScheduler
 
-Personal light-exposure tracker designed to promote a healthy circadian rhythm. NightModeScheduler securely logs your evening screen time entirely offline using the browser's `localStorage` and mathematically estimates your optimal bedtime based on blue-light interference.
+An offline log of your evening screen time with a simple bedtime estimate. NightModeScheduler keeps your logs in the browser's `localStorage`, encrypted at rest, and never uploads them.
+
+The estimate is one fixed rule, shown on the page under the figure: 22:00 plus 20 minutes for each hour of screen time after 18:00. It is not a measurement, and the app makes no claim about sleep, health or the body.
 
 **Live:** [nightmode.stormberry.as](https://nightmode.stormberry.as)
 
 ## Features
-- **Offline Tracking**: Securely log and track your evening screen exposure using privacy-first browser storage.
-- **Blue-Light Meter**: Dynamic CSS background gradients that shift in color temperature based on your logged exposure levels.
-- **Bedtime Calculator**: Automatically pushes back your optimal bedtime recommendation if excessive late-night screen time is detected.
+- **Offline Tracking**: Log your evening screen time in privacy-first browser storage.
+- **Colour shift**: the background moves from blue towards amber as the screen time on the slider goes up.
+- **Bedtime estimate**: 22:00 plus 20 minutes for each hour of screen time after 18:00, wrapped past midnight and shown in your own clock format.
 - **Responsive Layout**: Optimized for mobile and desktop with a premium deep-dark aesthetic.
 
 ## Architecture
@@ -18,7 +20,7 @@ Personal light-exposure tracker designed to promote a healthy circadian rhythm. 
 
 ## Stack
 - Browser `localStorage` for secure, persistent tracking.
-- Browser `Date` for real-time circadian calculations.
+- Browser `Intl` formatting, so times follow your locale (22:40 or 10:40 PM).
 - [Inter](https://rsms.me/inter/) typeface, locally hosted.
 
 ## Local development

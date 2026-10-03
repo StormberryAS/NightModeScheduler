@@ -3,20 +3,20 @@
 <head>
   <!--
     Stormberry Labs - NightModeScheduler
-    Offline circadian rhythm and blue-light exposure tracker.
+    Offline evening screen-time log with a simple bedtime estimate.
   -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>NightModeScheduler | Circadian Screen Tracker</title>
+  <title>NightModeScheduler | Evening Screen-Time Log</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <meta name="description" content="Offline light-exposure tracker with a gentle circadian nudge. Your logs are encrypted at rest in your browser with a device-bound key; nothing is uploaded." />
+  <meta name="description" content="Offline evening screen-time log with a simple bedtime estimate. Your logs are encrypted at rest in your browser with a device-bound key; nothing is uploaded." />
 
   <!-- Local Fonts: Inter -->
   <link rel="stylesheet" href="fonts/inter/inter.css?v=868d674e" />
   <link rel="stylesheet" href="style.css?v=459a7b17" />
   <link rel="stylesheet" href="gate.css?v=df00448f" />
-  <script src="gate.js?v=1c833629" defer></script>
+  <script src="gate.js?v=8a482d2a" defer></script>
   <link rel="canonical" href="https://nightmode.stormberry.as/" />
 </head>
 <body>
@@ -26,39 +26,39 @@
       <img src="favicon.svg" alt="NightModeScheduler Icon" class="logo-icon" />
       <div class="header-text">
         <h1>NightModeScheduler</h1>
-        <p class="tagline">Circadian Light Tracker</p>
+        <p class="tagline">Evening screen-time log</p>
       </div>
     </div>
   </header>
 
   <main class="main-content">
     <div class="card">
-      <h2 class="card-title">Evening Exposure Log</h2>
+      <h2 class="card-title">Evening screen time</h2>
       
       <div class="slider-container">
         <div class="slider-label">
-          <span>Hours of Screen Time (After 6 PM)</span>
+          <label for="exposure-slider">Hours of screen time after <span id="evening-start">18:00</span></label>
           <span class="slider-val" id="exposure-val">2.0 hrs</span>
         </div>
         <input type="range" id="exposure-slider" min="0" max="6" step="0.5" value="2" />
       </div>
 
-      <button class="btn" id="save-log-btn">Log Today's Exposure</button>
+      <button class="btn" id="save-log-btn">Log today's screen time</button>
 
       <div class="result-box">
-        <div class="result-label">Recommended Bedtime</div>
-        <div class="result-time" id="bedtime-val">10:30 PM</div>
-        <div class="result-desc" id="bedtime-desc">Your circadian rhythm is stable.</div>
+        <div class="result-label">Estimated bedtime</div>
+        <div class="result-time" id="bedtime-val">22:40</div>
+        <div class="result-desc" id="bedtime-desc">Estimate from a fixed rule, not a measurement: 22:00 plus 20 minutes for each hour of screen time after 18:00.</div>
       </div>
 
       <div class="log-history">
-        <h3>Recent Logs</h3>
+        <h3>Recent logs</h3>
         <ul class="log-list" id="log-list">
           <!-- Populated by JS -->
         </ul>
         <div class="data-management">
-          <button class="btn btn-secondary" id="export-btn">Download Logs</button>
-          <button class="btn btn-secondary" id="import-btn">Import Logs</button>
+          <button class="btn btn-secondary" id="export-btn">Download logs</button>
+          <button class="btn btn-secondary" id="import-btn">Import logs</button>
           <input type="file" id="import-file" accept=".json" style="display: none;" />
         </div>
       </div>
@@ -278,6 +278,6 @@
     </div>
   </footer>
 
-  <script src="app.js?v=a7246f01"></script>
+  <script src="app.js?v=d6f6e4b8"></script>
 </body>
 </html>
