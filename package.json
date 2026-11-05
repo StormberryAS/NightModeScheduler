@@ -1,0 +1,19 @@
+{
+  "name": "nightmodescheduler-dev",
+  "private": true,
+  "type": "module",
+  "description": "Build and test tooling only: compiles ts/app.ts into the JavaScript the page loads (app.js) and runs the tests (TypeScript, run by Node 24 directly). The published app has no runtime dependencies, and none of these files is published.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tools/build-ts.sh",
+    "check": "tools/build-ts.sh --check",
+    "test": "node --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}

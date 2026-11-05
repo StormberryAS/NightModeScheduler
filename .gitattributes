@@ -1,0 +1,9 @@
+# GitHub's language bar counts what people write, not what a tool generates. The files below are
+# generated, so they are marked and left out of the statistics (and the diffs of generated files
+# are collapsed by default on GitHub).
+#
+# app.js is compiled from ts/app.ts by tools/build-ts.sh (5 November 2026); edit the TypeScript.
+/app.js linguist-generated=true
+# gate.js, the first-run notice, is written by build-gates.py at the root of the GitHub folder,
+# shared by every Labs app; it is not edited here.
+/gate.js linguist-generated=true

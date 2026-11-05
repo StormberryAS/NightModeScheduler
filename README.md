@@ -13,7 +13,10 @@ The estimate is one fixed rule, shown on the page under the figure: 22:00 plus 2
 - **Responsive Layout**: Optimized for mobile and desktop with a premium deep-dark aesthetic.
 
 ## Architecture
-- **Vanilla HTML/CSS/JS**, no frameworks, no build step.
+- **Vanilla HTML and CSS, TypeScript**, no frameworks.
+- **TypeScript source in `ts/`, compiled JavaScript committed.** `ts/app.ts` compiles to `app.js`, at the same path the page has always loaded, as a classic script (no modules). The compiled file is committed because GitHub Pages serves the repository as it is, with no build step of its own; `.gitattributes` marks it as generated. Edit the TypeScript, never the `.js`.
+- **First-run notice generated.** `gate.js` and `gate.css` are written by `build-gates.py`, shared by every Stormberry Labs app, and are not edited here; `.gitattributes` marks `gate.js` as generated.
+- **Build:** `npm run build` (`tools/build-ts.sh`) installs the pinned compiler (`npm ci`), compiles, then runs `bump_assets.py` to restamp the `?v=` cache stamps. `npm run check` changes nothing and fails when the committed JavaScript is not what the TypeScript compiles to. `npm test` runs the tests in `tests/` with the test runner built into Node 24. The published app has no runtime dependencies.
 - **Privacy First**, no cookies, no tracking. Zero external API calls. All logs remain strictly on your device.
 - Stormberry dark-mode glassmorphism design system, Inter typography.
 - **Sovereign AI**, built and maintained using high-speed agentic workflows.
