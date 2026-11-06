@@ -1,13 +1,13 @@
 # NightModeScheduler
 
-An offline log of your evening screen time with a simple bedtime estimate. NightModeScheduler keeps your logs in the browser's `localStorage`, encrypted at rest, and never uploads them.
+A log of your evening screen time with a simple bedtime estimate. NightModeScheduler runs in your browser, keeps your logs in the browser's `localStorage`, encrypted at rest, and never uploads them.
 
 The estimate is one fixed rule, shown on the page under the figure: 22:00 plus 20 minutes for each hour of screen time after 18:00. It is not a measurement, and the app makes no claim about sleep, health or the body.
 
 **Live:** [nightmode.stormberry.as](https://nightmode.stormberry.as)
 
 ## Features
-- **Offline Tracking**: Log your evening screen time in privacy-first browser storage.
+- **Local tracking**: Log your evening screen time in privacy-first browser storage on your own device. The page needs the network to load; nothing is uploaded.
 - **Colour shift**: the background moves from blue towards amber as the screen time on the slider goes up.
 - **Bedtime estimate**: 22:00 plus 20 minutes for each hour of screen time after 18:00, wrapped past midnight and shown in your own clock format.
 - **Responsive Layout**: Optimized for mobile and desktop with a premium deep-dark aesthetic.

@@ -45,6 +45,8 @@ body {
   display: flex; flex-direction: column;
   transition: background-color var(--t-med);
 }
+button, input, select, textarea { font-family: var(--font-sans); }
+::file-selector-button { font-family: inherit; }
 
 h1, h2, h3 { color: var(--text-primary); font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
 
@@ -208,6 +210,7 @@ input[type=range]::-webkit-slider-thumb {
    own form styles off it. */
 .app-switcher-container input.switcher-pause {
   all: revert;
+  font-family: var(--font-sans);
   margin: 0 0.5rem 0.75rem 0;
   vertical-align: middle;
   accent-color: var(--accent-primary);

@@ -3,7 +3,7 @@
     the build refuses to overwrite a hand edit, and its check mode fails on one. */
 
 /* NightModeScheduler Logic
-   Offline evening screen-time log with a simple bedtime estimate. Logs are
+   Evening screen-time log with a simple bedtime estimate. Logs are
    held in localStorage encrypted at rest with a device-bound, non-extractable
    AES-GCM key (see the ENCRYPTION AT REST block below).
 
