@@ -15,10 +15,11 @@ const COMPILED = ['app.js'];
 const GENERATED = ['gate.js'];
 
 /** The first-run notice as build-gates.py (at the root of the GitHub folder) last wrote it here,
-    on 2 October 2026. Only that script changes these files; when it does, update the hashes in
-    the same commit. */
+    on 6 November 2026 (gate.js compiled by tsc from the script's TypeScript template; gate.css
+    unchanged since 2 October 2026). Only that script changes these files; when it does, update
+    the hashes in the same commit. */
 const GATE_SHA256: Record<string, string> = {
-  'gate.js': '8a482d2aa9515abc70ca04c1befa82e8bf92ed1bc4d061875d3a932aeda21406',
+  'gate.js': '340068836137094e3429ebef4126224e60ebb6fa4fd467913fc7c90d4c3f92b1',
   'gate.css': 'df00448f893315714e1808a703b096efda68d1f168ca68f96b5fb463c30b68fb',
 };
 
@@ -32,7 +33,7 @@ test('tools/build-ts.sh --check passes: app.js equals a fresh compile', () => {
 
 test('the generated first-run notice is byte for byte what build-gates.py wrote', () => {
   for (const [f, want] of Object.entries(GATE_SHA256)) assert.equal(sha256(f), want, f);
-  assert.match(readFileSync(`${root}gate.js`, 'utf8'), /GENERATED FILE\. Do not edit this copy/);
+  assert.match(readFileSync(`${root}gate.js`, 'utf8'), /^"use strict";\n\/\*! STORMBERRY FIRST-RUN GATE \(behaviour\)\. NightModeScheduler, dismissible tier\.\n {4}GENERATED FILE: build-gates\.py /);
 });
 
 test('index.html loads app.js as before: a classic script at the end of the body, after gate.js', () => {
